@@ -60,6 +60,9 @@ const _allApiProposals = {
 	chatDebug: {
 		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.chatDebug.d.ts',
 	},
+	chatHeadlessSession: {
+		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.chatHeadlessSession.d.ts',
+	},
 	chatHooks: {
 		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.chatHooks.d.ts',
 	},
@@ -80,6 +83,9 @@ const _allApiProposals = {
 	},
 	chatProvider: {
 		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.chatProvider.d.ts',
+	},
+	chatQuestionCarousel: {
+		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.chatQuestionCarousel.d.ts',
 	},
 	chatReferenceBinaryData: {
 		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.chatReferenceBinaryData.d.ts',

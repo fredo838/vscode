@@ -36,7 +36,7 @@ import { IChatModel, IChatResponseModel } from '../../contrib/chat/common/model/
 import { ChatRequestAgentPart } from '../../contrib/chat/common/requestParser/chatParserTypes.js';
 import { ChatRequestParser, IChatParserContext } from '../../contrib/chat/common/requestParser/chatRequestParser.js';
 import { getDynamicVariablesForWidget, getSelectedToolAndToolSetsForWidget } from '../../contrib/chat/browser/attachments/chatVariables.js';
-import { IChatContentInlineReference, IChatContentReference, IChatFollowup, IChatNotebookEdit, IChatProgress, IChatService, IChatTask, IChatTaskSerialized, IChatWarningMessage } from '../../contrib/chat/common/chatService/chatService.js';
+import { IChatContentInlineReference, IChatContentReference, IChatFollowup, IChatModelReference, IChatNotebookEdit, IChatProgress, IChatQuestionAnswers, IChatService, IChatTask, IChatTaskSerialized, IChatWarningMessage } from '../../contrib/chat/common/chatService/chatService.js';
 import { ChatSessionOptionsMap, IChatSessionsService } from '../../contrib/chat/common/chatSessionsService.js';
 import { ChatAgentLocation, ChatModeKind } from '../../contrib/chat/common/constants.js';
 import { ILanguageModelToolsService } from '../../contrib/chat/common/tools/languageModelToolsService.js';
@@ -123,6 +123,10 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 
 	private readonly _unresolvedAnchors = new Map</* requestId */string, Map</* id */ string, UnresolvedAnchor>>();
 
+	/** Keeps headless sessions created via {@link $createHeadlessChatSession} pinned in memory
+	 * for the life of this service — see that method's doc comment. */
+	private readonly _headlessSessionRefs: IChatModelReference[] = [];
+
 	constructor(
 		extHostContext: IExtHostContext,
 		@IChatAgentService private readonly _chatAgentService: IChatAgentService,
@@ -165,6 +169,10 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 		}));
 		this._register(this._chatService.onDidReceiveQuestionCarouselAnswer(e => {
 			this._proxy.$handleQuestionCarouselAnswer(e.requestId, e.resolveId, e.answers);
+		}));
+		this._register(this._chatService.onDidRequestQuestionCarousel(e => {
+			const message = typeof e.carousel.message === 'string' ? e.carousel.message : e.carousel.message?.value;
+			this._proxy.$onDidRequestQuestionCarousel(e.requestId, e.sessionResource, e.carousel.resolveId ?? '', e.carousel.questions, e.carousel.allowSkip, message);
 		}));
 		this._register(this._chatWidgetService.onDidChangeFocusedSession(() => {
 			this._acceptActiveChatSession(this._chatWidgetService.lastFocusedWidget);
@@ -335,6 +343,24 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 		}
 
 		await this._chatService.transferChatSession(model.sessionResource, URI.revive(toWorkspace));
+	}
+
+	$answerQuestionCarousel(requestId: string, resolveId: string, answers: Record<string, unknown> | undefined): void {
+		this._chatService.notifyQuestionCarouselAnswer(requestId, resolveId, answers as IChatQuestionAnswers | undefined);
+	}
+
+	async $createHeadlessChatSession(participantId: string, modelId: string | undefined): Promise<void> {
+		const ref = this._chatService.startNewLocalSession(ChatAgentLocation.Chat);
+		this._headlessSessionRefs.push(ref);
+		// Fire-and-forget: the targeted participant is expected to keep its request permanently
+		// pending (see `bodeClaude.browserShareBridge`'s handler), so this promise would otherwise
+		// never resolve. Errors are logged rather than thrown since there's no caller left waiting
+		// by the time a failure could occur.
+		this._chatService.sendRequest(ref.object.sessionResource, '', {
+			agentId: participantId,
+			userSelectedModelId: modelId,
+			location: ChatAgentLocation.Chat,
+		}).catch(err => this._logService.error(`MainThreadChatAgents2#$createHeadlessChatSession: ${err}`));
 	}
 
 	async $registerAgent(handle: number, extension: ExtensionIdentifier, id: string, metadata: IExtensionChatAgentMetadata, dynamicProps: IDynamicChatAgentProps | undefined): Promise<void> {

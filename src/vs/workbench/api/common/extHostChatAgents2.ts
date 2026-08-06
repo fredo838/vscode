@@ -22,7 +22,7 @@ import { ILogService } from '../../../platform/log/common/log.js';
 import { packErrorForTelemetry } from '../../../platform/telemetry/common/errorTelemetry.js';
 import { isChatViewTitleActionContext } from '../../contrib/chat/common/actions/chatActions.js';
 import { IChatAgentRequest, IChatAgentResult, IChatAgentResultTimings, UserSelectedTools } from '../../contrib/chat/common/participants/chatAgents.js';
-import { ChatAgentVoteDirection, IChatContentReference, IChatFollowup, IChatResponseErrorDetails, IChatUserActionEvent, IChatVoteAction } from '../../contrib/chat/common/chatService/chatService.js';
+import { ChatAgentVoteDirection, IChatContentReference, IChatFollowup, IChatQuestion, IChatResponseErrorDetails, IChatUserActionEvent, IChatVoteAction } from '../../contrib/chat/common/chatService/chatService.js';
 import { ChatRequestHooks } from '../../contrib/chat/common/promptSyntax/hookSchema.js';
 import { LocalChatSessionUri } from '../../contrib/chat/common/model/chatUri.js';
 import { ChatAgentLocation } from '../../contrib/chat/common/constants.js';
@@ -525,6 +525,9 @@ export class ExtHostChatAgents2 extends Disposable implements ExtHostChatAgentsS
 	readonly onDidChangeSlashCommands = this._onDidChangeSlashCommands.event;
 	private readonly _onDidChangeHooks = this._register(new Emitter<void>());
 	readonly onDidChangeHooks = this._onDidChangeHooks.event;
+
+	private readonly _onDidRequestQuestionCarousel = this._register(new Emitter<vscode.ChatQuestionCarouselRequestEvent>());
+	readonly onDidRequestQuestionCarousel = this._onDidRequestQuestionCarousel.event;
 	private readonly _onDidChangePlugins = this._register(new Emitter<void>());
 	readonly onDidChangePlugins = this._onDidChangePlugins.event;
 
@@ -1242,6 +1245,45 @@ export class ExtHostChatAgents2 extends Disposable implements ExtHostChatAgentsS
 		if (requestResolvers.size === 0) {
 			this._pendingCarouselResolvers.delete(requestId);
 		}
+	}
+
+	$onDidRequestQuestionCarousel(requestId: string, sessionResourceDto: UriComponents, resolveId: string, questions: IChatQuestion[], allowSkip: boolean, message: string | undefined): void {
+		this._onDidRequestQuestionCarousel.fire({
+			sessionResource: URI.revive(sessionResourceDto),
+			requestId,
+			resolveId,
+			questions: questions.map(q => ({
+				id: q.id,
+				title: q.title,
+				message: typeof q.message === 'string' ? q.message : q.message?.value,
+				options: q.options,
+				defaultValue: q.defaultValue,
+				allowFreeformInput: q.allowFreeformInput,
+				required: q.required,
+			})),
+			message,
+			allowSkip,
+		});
+	}
+
+	/**
+	 * Answers a question carousel discovered via {@link onDidRequestQuestionCarousel} without
+	 * ever needing VS Code's own chat widget to be visible — see `IChatService#notifyQuestionCarouselAnswer`
+	 * on the main-thread side, which any existing listener for that `resolveId` (e.g.
+	 * `OpenBrowserTool`'s own external-answer listener) picks up the same way voice input does.
+	 */
+	answerQuestionCarousel(requestId: string, resolveId: string, answers: { [questionId: string]: string } | undefined): void {
+		this._proxy.$answerQuestionCarousel(requestId, resolveId, answers);
+	}
+
+	/**
+	 * Creates a headless local chat session and dispatches one request to it, targeting
+	 * `participantId` directly — no chat view/widget is ever created or shown. See
+	 * `MainThreadChatAgents2#$createHeadlessChatSession`'s doc comment for how the session is
+	 * kept alive afterward.
+	 */
+	createHeadlessChatSession(participantId: string, modelId: string | undefined): Promise<void> {
+		return this._proxy.$createHeadlessChatSession(participantId, modelId);
 	}
 
 	$acceptAction(handle: number, result: IChatAgentResult, event: IChatUserActionEvent): void {

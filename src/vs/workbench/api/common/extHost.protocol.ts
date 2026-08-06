@@ -61,7 +61,7 @@ import { IChatAgentMetadata, IChatAgentRequest, IChatAgentResult, UserSelectedTo
 import { ICodeMapperRequest, ICodeMapperResult } from '../../contrib/chat/common/editing/chatCodeMapperService.js';
 import { IChatContextItem } from '../../contrib/chat/common/contextContrib/chatContext.js';
 import { IChatProgressHistoryResponseContent, IChatRequestModeInstructions, IChatRequestVariableData } from '../../contrib/chat/common/model/chatModel.js';
-import { ChatResponseClearToPreviousToolInvocationReason, IChatContentInlineReference, IChatExternalEditsDto, IChatFollowup, IChatMultiDiffData, IChatMultiDiffDataSerialized, IChatNotebookEdit, IChatProgress, IChatTask, IChatTaskDto, IChatUserActionEvent, IChatVoteAction } from '../../contrib/chat/common/chatService/chatService.js';
+import { ChatResponseClearToPreviousToolInvocationReason, IChatContentInlineReference, IChatExternalEditsDto, IChatFollowup, IChatMultiDiffData, IChatMultiDiffDataSerialized, IChatNotebookEdit, IChatProgress, IChatQuestion, IChatTask, IChatTaskDto, IChatUserActionEvent, IChatVoteAction } from '../../contrib/chat/common/chatService/chatService.js';
 import { IChatSessionItem, IChatSessionProviderOptionGroup, IChatSessionProviderOptionItem } from '../../contrib/chat/common/chatSessionsService.js';
 import { IChatRequestVariableValue } from '../../contrib/chat/common/attachments/chatVariables.js';
 import { ChatAgentLocation } from '../../contrib/chat/common/constants.js';
@@ -1673,6 +1673,18 @@ export interface MainThreadChatAgentsShape2 extends IChatAgentProgressShape, IDi
 	$updateAgent(handle: number, metadataUpdate: IExtensionChatAgentMetadata): void;
 	$unregisterAgent(handle: number): void;
 
+	$answerQuestionCarousel(requestId: string, resolveId: string, answers: Record<string, unknown> | undefined): void;
+
+	/**
+	 * Creates a new, unattached local chat session and dispatches one request to it, targeting
+	 * `participantId` directly (no `@mention` parsing, no chat widget ever created or shown). The
+	 * session is pinned in memory for the life of this main-thread service, so a
+	 * `toolInvocationToken` obtained from the resulting request stays valid for later reuse (see
+	 * `LanguageModelToolsService#invokeTool`'s requirement that the token's session have a
+	 * non-completed most-recent request).
+	 */
+	$createHeadlessChatSession(participantId: string, modelId: string | undefined): Promise<void>;
+
 	$transferActiveChatSession(toWorkspace: UriComponents): Promise<void>;
 	$provideCustomAgents(token: CancellationToken): Promise<ICustomAgentDto[]>;
 	$provideInstructions(token: CancellationToken): Promise<IInstructionDto[]>;
@@ -1741,6 +1753,7 @@ export interface ExtHostChatAgentsShape2 {
 	$provideFollowups(request: Dto<IChatAgentRequest>, handle: number, result: IChatAgentResult, context: { history: IChatAgentHistoryEntryDto[] }, token: CancellationToken): Promise<IChatFollowup[]>;
 	$acceptFeedback(handle: number, result: IChatAgentResult, voteAction: IChatVoteAction): void;
 	$handleQuestionCarouselAnswer(requestId: string, resolveId: string, answers: Record<string, unknown> | undefined): void;
+	$onDidRequestQuestionCarousel(requestId: string, sessionResource: UriComponents, resolveId: string, questions: IChatQuestion[], allowSkip: boolean, message: string | undefined): void;
 	$acceptAction(handle: number, result: IChatAgentResult, action: IChatUserActionEvent): void;
 	$invokeCompletionProvider(handle: number, query: string, token: CancellationToken): Promise<IChatAgentCompletionItem[]>;
 	$provideChatTitle(handle: number, context: IChatAgentHistoryEntryDto[], token: CancellationToken): Promise<string | undefined>;
