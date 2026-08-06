@@ -417,7 +417,7 @@ export interface IBrowserViewModel extends IDisposable {
 	stopFindInPage(keepSelection?: boolean): Promise<void>;
 	getSelectedText(): Promise<string>;
 	clearStorage(): Promise<void>;
-	setSharedWithAgent(shared: boolean): Promise<boolean>;
+	setSharedWithAgent(shared: boolean, options?: { skipConfirmation?: boolean }): Promise<boolean>;
 	trustCertificate(host: string, fingerprint: string): Promise<void>;
 	untrustCertificate(host: string, fingerprint: string): Promise<void>;
 	deleteHistory(entryIds?: readonly number[]): Promise<void>;
@@ -904,7 +904,7 @@ export class BrowserViewModel extends Disposable implements IBrowserViewModel {
 
 	private static readonly SHARE_DONT_ASK_KEY = 'browserView.shareWithAgent.dontAskAgain';
 
-	async setSharedWithAgent(shared: boolean): Promise<boolean> {
+	async setSharedWithAgent(shared: boolean, options?: { skipConfirmation?: boolean }): Promise<boolean> {
 		if (shared) {
 			// Block sharing when the current page URL is denied by network policy.
 			if (this._url) {
@@ -922,7 +922,7 @@ export class BrowserViewModel extends Disposable implements IBrowserViewModel {
 
 			const storedChoice = this.storageService.getBoolean(BrowserViewModel.SHARE_DONT_ASK_KEY, StorageScope.PROFILE);
 
-			if (!storedChoice) {
+			if (!storedChoice && !options?.skipConfirmation) {
 				// First time (or no stored preference) -- ask.
 				const result = await this.dialogService.confirm({
 					type: 'question',
@@ -954,11 +954,16 @@ export class BrowserViewModel extends Disposable implements IBrowserViewModel {
 					return false;
 				}
 			} else {
+				// Either a persisted "don't ask again" choice, or an external caller (e.g. an
+				// extension via `preToolUseResult`) that already obtained the user's consent
+				// through its own UI before calling this — `dontAskAgain` only reflects the
+				// former, so an external skip for one call doesn't get misreported as the user
+				// having permanently opted out of this dialog.
 				this.telemetryService.publicLog2<IntegratedBrowserShareWithAgentEvent, IntegratedBrowserShareWithAgentClassification>(
 					'integratedBrowser.shareWithAgent',
 					{
 						shared: true,
-						dontAskAgain: true
+						dontAskAgain: storedChoice ?? false
 					}
 				);
 			}
