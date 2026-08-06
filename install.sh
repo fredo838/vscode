@@ -8,3 +8,4 @@ export PATH="$ROOT/.tools/node24/bin:$PATH"
 
 node -v
 npm install "$@"
+npm run compile

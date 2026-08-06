@@ -37,16 +37,13 @@ if [[ "$ORIGINAL_BRANCH" != "$MAIN_BRANCH" ]]; then
 	if ! git rebase "$MAIN_BRANCH"; then
 		echo "error: rebase of '$ORIGINAL_BRANCH' onto '$MAIN_BRANCH' hit conflicts." >&2
 		echo "Resolve them, then run 'git rebase --continue' (or 'git rebase --abort')," >&2
-		echo "and re-run the build step yourself: ./install.sh && npm run compile" >&2
+		echo "and re-run the build step yourself: ./install.sh" >&2
 		exit 1
 	fi
 fi
 
-echo "Installing dependencies..."
+echo "Installing dependencies and compiling..."
 bash ./install.sh
-
-echo "Compiling..."
-npm run compile
 
 echo "Done. Synced '$MAIN_BRANCH' with $UPSTREAM_REMOTE/$MAIN_BRANCH, pushed to origin,"
 echo "rebased '$ORIGINAL_BRANCH' onto it, and rebuilt."
