@@ -1676,14 +1676,20 @@ export interface MainThreadChatAgentsShape2 extends IChatAgentProgressShape, IDi
 	$answerQuestionCarousel(requestId: string, resolveId: string, answers: Record<string, unknown> | undefined): void;
 
 	/**
-	 * Creates a new, unattached local chat session and dispatches one request to it, targeting
-	 * `participantId` directly (no `@mention` parsing, no chat widget ever created or shown). The
-	 * session is pinned in memory for the life of this main-thread service, so a
-	 * `toolInvocationToken` obtained from the resulting request stays valid for later reuse (see
-	 * `LanguageModelToolsService#invokeTool`'s requirement that the token's session have a
-	 * non-completed most-recent request).
+	 * Starts a new, unattached local chat session (no chat widget ever created or shown) and
+	 * pins it in memory for the life of this main-thread service, returning an opaque handle for
+	 * {@link $sendHeadlessChatRequest}. Pinning keeps a `toolInvocationToken` obtained from a
+	 * later request valid for later reuse (see `LanguageModelToolsService#invokeTool`'s
+	 * requirement that the token's session have a non-completed most-recent request).
 	 */
-	$createHeadlessChatSession(participantId: string, modelId: string | undefined): Promise<void>;
+	$startHeadlessChatSession(): Promise<number>;
+
+	/**
+	 * Dispatches one request to the session identified by `sessionHandle`, targeting `agentId`
+	 * directly (no `@mention` parsing). Resolves once the request has been dispatched, not once
+	 * the targeted participant's handler returns.
+	 */
+	$sendHeadlessChatRequest(sessionHandle: number, message: string, agentId: string | undefined, modelId: string | undefined): Promise<void>;
 
 	$transferActiveChatSession(toWorkspace: UriComponents): Promise<void>;
 	$provideCustomAgents(token: CancellationToken): Promise<ICustomAgentDto[]>;

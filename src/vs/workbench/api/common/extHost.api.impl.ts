@@ -1764,9 +1764,13 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 				checkProposedApiEnabled(extension, 'chatQuestionCarousel');
 				extHostChatAgents2.answerQuestionCarousel(requestId, resolveId, answers);
 			},
-			createHeadlessChatSession(participantId: string, modelId: string | undefined) {
+			startSession() {
 				checkProposedApiEnabled(extension, 'chatHeadlessSession');
-				return extHostChatAgents2.createHeadlessChatSession(participantId, modelId);
+				return extHostChatAgents2.startSession();
+			},
+			sendRequest(session: number, message: string, options?: { agentId?: string; userSelectedModelId?: string }) {
+				checkProposedApiEnabled(extension, 'chatHeadlessSession');
+				return extHostChatAgents2.sendRequest(session, message, options?.agentId, options?.userSelectedModelId);
 			},
 			updateQuotas: (quotas: vscode.ChatQuotaSnapshots) => {
 				checkProposedApiEnabled(extension, 'chatParticipantPrivate');

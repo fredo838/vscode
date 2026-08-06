@@ -123,9 +123,10 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 
 	private readonly _unresolvedAnchors = new Map</* requestId */string, Map</* id */ string, UnresolvedAnchor>>();
 
-	/** Keeps headless sessions created via {@link $createHeadlessChatSession} pinned in memory
-	 * for the life of this service — see that method's doc comment. */
-	private readonly _headlessSessionRefs: IChatModelReference[] = [];
+	/** Keeps headless sessions created via {@link $startHeadlessChatSession} pinned in memory for
+	 * the life of this service, keyed by the opaque handle handed back to the extension host. */
+	private readonly _headlessSessions = new Map<number, IChatModelReference>();
+	private _headlessSessionHandlePool = 0;
 
 	constructor(
 		extHostContext: IExtHostContext,
@@ -349,18 +350,23 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 		this._chatService.notifyQuestionCarouselAnswer(requestId, resolveId, answers as IChatQuestionAnswers | undefined);
 	}
 
-	async $createHeadlessChatSession(participantId: string, modelId: string | undefined): Promise<void> {
+	$startHeadlessChatSession(): Promise<number> {
 		const ref = this._chatService.startNewLocalSession(ChatAgentLocation.Chat);
-		this._headlessSessionRefs.push(ref);
-		// Fire-and-forget: the targeted participant is expected to keep its request permanently
-		// pending (see `bodeClaude.browserShareBridge`'s handler), so this promise would otherwise
-		// never resolve. Errors are logged rather than thrown since there's no caller left waiting
-		// by the time a failure could occur.
-		this._chatService.sendRequest(ref.object.sessionResource, '', {
-			agentId: participantId,
+		const handle = this._headlessSessionHandlePool++;
+		this._headlessSessions.set(handle, ref);
+		return Promise.resolve(handle);
+	}
+
+	async $sendHeadlessChatRequest(sessionHandle: number, message: string, agentId: string | undefined, modelId: string | undefined): Promise<void> {
+		const ref = this._headlessSessions.get(sessionHandle);
+		if (!ref) {
+			throw new Error(`MainThreadChatAgents2#$sendHeadlessChatRequest: unknown session handle ${sessionHandle}`);
+		}
+		await this._chatService.sendRequest(ref.object.sessionResource, message, {
+			agentId,
 			userSelectedModelId: modelId,
 			location: ChatAgentLocation.Chat,
-		}).catch(err => this._logService.error(`MainThreadChatAgents2#$createHeadlessChatSession: ${err}`));
+		});
 	}
 
 	async $registerAgent(handle: number, extension: ExtensionIdentifier, id: string, metadata: IExtensionChatAgentMetadata, dynamicProps: IDynamicChatAgentProps | undefined): Promise<void> {

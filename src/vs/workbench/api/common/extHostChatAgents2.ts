@@ -1277,13 +1277,20 @@ export class ExtHostChatAgents2 extends Disposable implements ExtHostChatAgentsS
 	}
 
 	/**
-	 * Creates a headless local chat session and dispatches one request to it, targeting
-	 * `participantId` directly — no chat view/widget is ever created or shown. See
-	 * `MainThreadChatAgents2#$createHeadlessChatSession`'s doc comment for how the session is
-	 * kept alive afterward.
+	 * Starts a new, unattached local chat session — no chat view/widget is ever created or
+	 * shown. See `MainThreadChatAgents2#$startHeadlessChatSession`'s doc comment for how the
+	 * session is kept alive afterward.
 	 */
-	createHeadlessChatSession(participantId: string, modelId: string | undefined): Promise<void> {
-		return this._proxy.$createHeadlessChatSession(participantId, modelId);
+	startSession(): Promise<number> {
+		return this._proxy.$startHeadlessChatSession();
+	}
+
+	/**
+	 * Dispatches one request to a session previously returned by {@link startSession}, targeting
+	 * `agentId` directly — no `@mention` parsing.
+	 */
+	sendRequest(session: number, message: string, agentId: string | undefined, modelId: string | undefined): Promise<void> {
+		return this._proxy.$sendHeadlessChatRequest(session, message, agentId, modelId);
 	}
 
 	$acceptAction(handle: number, result: IChatAgentResult, event: IChatUserActionEvent): void {
