@@ -43,7 +43,7 @@ if [[ "$ORIGINAL_BRANCH" != "$MAIN_BRANCH" ]]; then
 fi
 
 echo "Installing dependencies..."
-./install.sh
+bash ./install.sh
 
 echo "Compiling..."
 npm run compile
