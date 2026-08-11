@@ -1740,6 +1740,22 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 				checkProposedApiEnabled(extension, 'chatParticipantPrivate');
 				return _asExtensionEvent(extHostChatAgents2.onDidDisposeChatSession)(listeners, thisArgs, disposables);
 			},
+			onDidRequestQuestionCarousel: (listeners, thisArgs?, disposables?) => {
+				checkProposedApiEnabled(extension, 'chatQuestionCarousel');
+				return _asExtensionEvent(extHostChatAgents2.onDidRequestQuestionCarousel)(listeners, thisArgs, disposables);
+			},
+			answerQuestionCarousel(requestId: string, resolveId: string, answers: { [questionId: string]: string } | undefined) {
+				checkProposedApiEnabled(extension, 'chatQuestionCarousel');
+				extHostChatAgents2.answerQuestionCarousel(requestId, resolveId, answers);
+			},
+			startSession() {
+				checkProposedApiEnabled(extension, 'chatHeadlessSession');
+				return extHostChatAgents2.startSession();
+			},
+			sendRequest(session: number, message: string, options?: { agentId?: string; userSelectedModelId?: string }) {
+				checkProposedApiEnabled(extension, 'chatHeadlessSession');
+				return extHostChatAgents2.sendRequest(session, message, options?.agentId, options?.userSelectedModelId);
+			},
 			updateQuotas: (quotas: vscode.ChatQuotaSnapshots) => {
 				checkProposedApiEnabled(extension, 'chatParticipantPrivate');
 				extHostChatQuota.updateQuotas(quotas);

@@ -60,7 +60,7 @@ import { IChatAgentMetadata, IChatAgentRequest, IChatAgentResult, UserSelectedTo
 import { ICodeMapperRequest, ICodeMapperResult } from '../../contrib/chat/common/editing/chatCodeMapperService.js';
 import { IChatContextItem } from '../../contrib/chat/common/contextContrib/chatContext.js';
 import { IChatProgressHistoryResponseContent, IChatRequestModeInstructions, IChatRequestVariableData } from '../../contrib/chat/common/model/chatModel.js';
-import { ChatResponseClearToPreviousToolInvocationReason, IChatContentInlineReference, IChatExternalEditsDto, IChatFollowup, IChatMultiDiffData, IChatMultiDiffDataSerialized, IChatNotebookEdit, IChatProgress, IChatTask, IChatTaskDto, IChatUserActionEvent, IChatVoteAction } from '../../contrib/chat/common/chatService/chatService.js';
+import { ChatResponseClearToPreviousToolInvocationReason, IChatContentInlineReference, IChatExternalEditsDto, IChatFollowup, IChatMultiDiffData, IChatMultiDiffDataSerialized, IChatNotebookEdit, IChatProgress, IChatQuestion, IChatTask, IChatTaskDto, IChatUserActionEvent, IChatVoteAction } from '../../contrib/chat/common/chatService/chatService.js';
 import { IChatSessionItem, IChatSessionProviderOptionGroup, IChatSessionProviderOptionItem } from '../../contrib/chat/common/chatSessionsService.js';
 import { IChatRequestVariableValue } from '../../contrib/chat/common/attachments/chatVariables.js';
 import { ChatAgentLocation } from '../../contrib/chat/common/constants.js';
@@ -1672,6 +1672,24 @@ export interface MainThreadChatAgentsShape2 extends IChatAgentProgressShape, IDi
 	$updateAgent(handle: number, metadataUpdate: IExtensionChatAgentMetadata): void;
 	$unregisterAgent(handle: number): void;
 
+	$answerQuestionCarousel(requestId: string, resolveId: string, answers: Record<string, unknown> | undefined): void;
+
+	/**
+	 * Starts a new, unattached local chat session (no chat widget ever created or shown) and
+	 * pins it in memory for the life of this main-thread service, returning an opaque handle for
+	 * {@link $sendHeadlessChatRequest}. Pinning keeps a `toolInvocationToken` obtained from a
+	 * later request valid for later reuse (see `LanguageModelToolsService#invokeTool`'s
+	 * requirement that the token's session have a non-completed most-recent request).
+	 */
+	$startHeadlessChatSession(): Promise<number>;
+
+	/**
+	 * Dispatches one request to the session identified by `sessionHandle`, targeting `agentId`
+	 * directly (no `@mention` parsing). Resolves once the request has been dispatched, not once
+	 * the targeted participant's handler returns.
+	 */
+	$sendHeadlessChatRequest(sessionHandle: number, message: string, agentId: string | undefined, modelId: string | undefined): Promise<void>;
+
 	$transferActiveChatSession(toWorkspace: UriComponents): Promise<void>;
 	$provideCustomAgents(token: CancellationToken): Promise<ICustomAgentDto[]>;
 	$provideInstructions(token: CancellationToken): Promise<IInstructionDto[]>;
@@ -1740,6 +1758,7 @@ export interface ExtHostChatAgentsShape2 {
 	$provideFollowups(request: Dto<IChatAgentRequest>, handle: number, result: IChatAgentResult, context: { history: IChatAgentHistoryEntryDto[] }, token: CancellationToken): Promise<IChatFollowup[]>;
 	$acceptFeedback(handle: number, result: IChatAgentResult, voteAction: IChatVoteAction): void;
 	$handleQuestionCarouselAnswer(requestId: string, resolveId: string, answers: Record<string, unknown> | undefined): void;
+	$onDidRequestQuestionCarousel(requestId: string, sessionResource: UriComponents, resolveId: string, questions: IChatQuestion[], allowSkip: boolean, message: string | undefined): void;
 	$acceptAction(handle: number, result: IChatAgentResult, action: IChatUserActionEvent): void;
 	$invokeCompletionProvider(handle: number, query: string, token: CancellationToken): Promise<IChatAgentCompletionItem[]>;
 	$provideChatTitle(handle: number, context: IChatAgentHistoryEntryDto[], token: CancellationToken): Promise<string | undefined>;

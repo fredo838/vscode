@@ -2051,6 +2051,15 @@ export interface IChatService {
 	readonly onDidReceiveQuestionCarouselAnswer: Event<{ requestId: string; resolveId: string; answers: IChatQuestionAnswers | undefined }>;
 	notifyQuestionCarouselAnswer(requestId: string, resolveId: string, answers: IChatQuestionAnswers | undefined): void;
 
+	/**
+	 * Fires when a new, unanswered question carousel is appended to a request's response — e.g.
+	 * the Integrated-Browser "Share Browser Tab" prompt (see `OpenBrowserTool#_promptForUnsharedPages`).
+	 * Lets code outside the chat widget (an extension, via `vscode.chat.onDidRequestQuestionCarousel`)
+	 * discover and answer a carousel without that widget ever being shown, by later calling
+	 * {@link notifyQuestionCarouselAnswer} with the same `requestId`/`resolveId`.
+	 */
+	readonly onDidRequestQuestionCarousel: Event<{ requestId: string; sessionResource: URI; carousel: IChatQuestionCarousel }>;
+
 	readonly onDidDisposeSession: Event<{ readonly sessionResources: readonly URI[]; readonly reason: 'cleared' }>;
 
 	transferChatSession(transferredSessionResource: URI, toWorkspace: URI): Promise<void>;
