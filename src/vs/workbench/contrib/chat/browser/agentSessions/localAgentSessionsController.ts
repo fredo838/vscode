@@ -188,8 +188,8 @@ export class LocalAgentsSessionsController extends Disposable implements IChatSe
 		const model = this.chatService.getSession(chat.sessionResource);
 
 		if (model) {
-			if (!model.hasRequests) {
-				return undefined; // ignore sessions without requests
+			if (!model.hasRequests || model.isInternal) {
+				return undefined; // ignore sessions without requests, and internal/extension-driven ones
 			}
 		} else if (chat.isActive) {
 			// Sessions that are active but don't have a chat model are ultimately untitled with no requests

@@ -351,7 +351,9 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 	}
 
 	$startHeadlessChatSession(): Promise<number> {
-		const ref = this._chatService.startNewLocalSession(ChatAgentLocation.Chat);
+		// A headless session is by definition never shown in any widget — mark it internal so it
+		// never leaks into the Agent Sessions list / history either (see `ChatModel#isInternal`).
+		const ref = this._chatService.startNewLocalSession(ChatAgentLocation.Chat, { internal: true });
 		const handle = this._headlessSessionHandlePool++;
 		this._headlessSessions.set(handle, ref);
 		return Promise.resolve(handle);

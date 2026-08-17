@@ -21,6 +21,8 @@ export interface IStartSessionProps {
 	readonly disableBackgroundKeepAlive?: boolean;
 	readonly inputState?: ISerializableChatModelInputState;
 	readonly isReadOnly?: IObservable<boolean>;
+	/** Excludes this session from `getLiveSessionItems()`/history persistence — see `ChatModel#isInternal`. */
+	readonly internal?: boolean;
 }
 
 export interface ChatModelStoreDelegate {

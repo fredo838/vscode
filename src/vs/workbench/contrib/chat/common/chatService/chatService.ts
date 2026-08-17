@@ -2105,6 +2105,9 @@ export interface IChatSessionStartOptions {
 	canUseTools?: boolean;
 	disableBackgroundKeepAlive?: boolean;
 	debugOwner?: string;
+	/** Marks the session as internal/extension-driven — excluded from `getLiveSessionItems()`,
+	 *  history persistence, and therefore from the Agent Sessions list. See `ChatModel#isInternal`. */
+	internal?: boolean;
 }
 
 export const ChatStopCancellationNoopEventName = 'chat.stopCancellationNoop';
