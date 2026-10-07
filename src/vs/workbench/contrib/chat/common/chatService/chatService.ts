@@ -2227,6 +2227,15 @@ export interface IChatService {
 	readonly onDidReceiveQuestionCarouselAnswer: Event<{ requestId: string; resolveId: string; answers: IChatQuestionAnswers | undefined }>;
 	notifyQuestionCarouselAnswer(requestId: string, resolveId: string, answers: IChatQuestionAnswers | undefined): void;
 
+	/**
+	 * Fires when a new, unanswered question carousel is appended to a request's response — e.g.
+	 * the Integrated-Browser "Share Browser Tab" prompt (see `OpenBrowserTool#_promptForUnsharedPages`).
+	 * Lets code outside the chat widget (an extension, via `vscode.chat.onDidReceiveQuestionCarousel`)
+	 * discover and answer a carousel without that widget ever being shown, by later calling
+	 * {@link notifyQuestionCarouselAnswer} with the same `requestId`/`resolveId`.
+	 */
+	readonly onDidReceiveQuestionCarousel: Event<{ requestId: string; sessionResource: URI; carousel: IChatQuestionCarousel }>;
+
 	/** Fires on model unload (`disposed`) or explicit session deletion (`cleared`). Unload does not delete persisted history. */
 	readonly onDidDisposeSession: Event<{ readonly sessionResources: readonly URI[]; readonly reason: 'cleared' | 'disposed' }>;
 
@@ -2263,6 +2272,9 @@ export interface IChatSessionStartOptions {
 	disableBackgroundKeepAlive?: boolean;
 	debugOwner?: string;
 	sessionTypeSelectionReason?: SessionTypeSelectionReason;
+	/** Marks the session as internal/extension-driven — excluded from `getLiveSessionItems()`,
+	 *  history persistence, and therefore from the Agent Sessions list. See `ChatModel#isInternal`. */
+	internal?: boolean;
 }
 
 export const ChatStopCancellationNoopEventName = 'chat.stopCancellationNoop';

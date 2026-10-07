@@ -23,6 +23,8 @@ export interface IStartSessionProps {
 	readonly isReadOnly?: IObservable<boolean>;
 	readonly isInputBlocked?: IObservable<boolean>;
 	readonly sessionTypeSelectionReason?: SessionTypeSelectionReason;
+	/** Excludes this session from `getLiveSessionItems()`/history persistence — see `ChatModel#isInternal`. */
+	readonly internal?: boolean;
 }
 
 export interface ChatModelStoreDelegate {
