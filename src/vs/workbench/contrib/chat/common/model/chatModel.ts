@@ -2005,6 +2005,10 @@ export interface IChatModel extends IDisposable {
 	readonly lastRequest: IChatRequestModel | undefined;
 	/** Whether this model will be kept alive while it is running or has edits */
 	readonly willKeepAlive: boolean;
+	/** Whether this is an internal, extension-driven session (e.g. a headless chat session minted
+	 *  purely to obtain a `toolInvocationToken`) that should never surface in session lists,
+	 *  history, or persistence — see `ChatService#shouldBeInHistory`/`shouldStoreSession`. */
+	readonly isInternal: boolean;
 	readonly lastRequestObs: IObservable<IChatRequestModel | undefined>;
 	/** Total copilot credits consumed across all turns in this session. */
 	readonly sessionCost: number;
@@ -2963,11 +2967,16 @@ export class ChatModel extends Disposable implements IChatModel {
 		return !this._disableBackgroundKeepAlive;
 	}
 
+	private readonly _isInternal: boolean;
+	get isInternal(): boolean {
+		return this._isInternal;
+	}
+
 	public dataSerializer?: IChatDataSerializerLog;
 
 	constructor(
 		dataRef: ISerializedChatDataReference | undefined,
-		initialModelProps: { initialLocation: ChatAgentLocation; canUseTools: boolean; sessionTypeSelectionReason?: SessionTypeSelectionReason; inputState?: ISerializableChatModelInputState; resource?: URI; disableBackgroundKeepAlive?: boolean; isReadOnly?: IObservable<boolean>; isInputBlocked?: IObservable<boolean> },
+		initialModelProps: { initialLocation: ChatAgentLocation; canUseTools: boolean; sessionTypeSelectionReason?: SessionTypeSelectionReason; inputState?: ISerializableChatModelInputState; resource?: URI; disableBackgroundKeepAlive?: boolean; isReadOnly?: IObservable<boolean>; isInputBlocked?: IObservable<boolean>; internal?: boolean },
 		@ILogService private readonly logService: ILogService,
 		@IChatAgentService private readonly chatAgentService: IChatAgentService,
 		@IChatEditingService private readonly chatEditingService: IChatEditingService,
@@ -3001,6 +3010,7 @@ export class ChatModel extends Disposable implements IChatModel {
 		}
 
 		this._disableBackgroundKeepAlive = initialModelProps.disableBackgroundKeepAlive ?? false;
+		this._isInternal = initialModelProps.internal ?? false;
 
 		this._timestamp = (isValidFullData && initialData.creationDate) || Date.now();
 		this._requests = initialData ? this._deserialize(initialData) : [];

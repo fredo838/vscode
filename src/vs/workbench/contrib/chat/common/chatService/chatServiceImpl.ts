@@ -43,7 +43,7 @@ import { ChatModel, ChatRequestModel, ChatRequestRemovalReason, getRestoredChatR
 import { ChatModelStore, IStartSessionProps } from '../model/chatModelStore.js';
 import { chatAgentLeader, ChatRequestAgentPart, ChatRequestAgentSubcommandPart, ChatRequestSlashCommandPart, ChatRequestTextPart, chatSubcommandLeader, getPromptText, IParsedChatRequest } from '../requestParser/chatParserTypes.js';
 import { ChatRequestParser } from '../requestParser/chatRequestParser.js';
-import { ChatMcpServersStarting, ChatPendingRequestChangeClassification, ChatPendingRequestChangeEvent, ChatPendingRequestChangeEventName, ChatRequestQueueKind, ChatSendResult, ChatSendResultQueued, ChatSendResultSent, ChatStopCancellationNoopClassification, ChatStopCancellationNoopEvent, ChatStopCancellationNoopEventName, IChatCompleteResponse, IChatDetail, IChatFollowup, IChatModelReference, IChatProgress, IChatQuestionAnswers, IChatRequestAcceptedEvent, IChatRequestSubmittedEvent, IChatSendRequestOptions, IChatSendRequestResponseState, IChatService, IChatSessionStartOptions, IChatUserActionEvent, IRemotePendingRequest, ResponseModelState } from './chatService.js';
+import { ChatMcpServersStarting, ChatPendingRequestChangeClassification, ChatPendingRequestChangeEvent, ChatPendingRequestChangeEventName, ChatRequestQueueKind, ChatSendResult, ChatSendResultQueued, ChatSendResultSent, ChatStopCancellationNoopClassification, ChatStopCancellationNoopEvent, ChatStopCancellationNoopEventName, IChatCompleteResponse, IChatDetail, IChatFollowup, IChatModelReference, IChatProgress, IChatQuestionAnswers, IChatQuestionCarousel, IChatRequestAcceptedEvent, IChatRequestSubmittedEvent, IChatSendRequestOptions, IChatSendRequestResponseState, IChatService, IChatSessionStartOptions, IChatUserActionEvent, IRemotePendingRequest, ResponseModelState } from './chatService.js';
 import { ChatRequestTelemetry, ChatServiceTelemetry } from './chatServiceTelemetry.js';
 import { IChatSessionsService, IChatSessionHistoryItem, isAgentHostTarget, isTerminalCommandPrompt, localChatSessionType } from '../chatSessionsService.js';
 import { ChatSessionStore, IChatSessionEntryMetadata } from '../model/chatSessionStore.js';
@@ -218,6 +218,9 @@ export class ChatService extends Disposable implements IChatService {
 	private readonly _onDidReceiveQuestionCarouselAnswer = this._register(new Emitter<{ requestId: string; resolveId: string; answers: IChatQuestionAnswers | undefined }>());
 	public readonly onDidReceiveQuestionCarouselAnswer = this._onDidReceiveQuestionCarouselAnswer.event;
 
+	private readonly _onDidReceiveQuestionCarousel = this._register(new Emitter<{ requestId: string; sessionResource: URI; carousel: IChatQuestionCarousel }>());
+	public readonly onDidReceiveQuestionCarousel = this._onDidReceiveQuestionCarousel.event;
+
 	private readonly _onDidDisposeSession = this._register(new Emitter<{ readonly sessionResources: URI[]; reason: 'cleared' | 'disposed' }>());
 	public readonly onDidDisposeSession = this._onDidDisposeSession.event;
 
@@ -380,7 +383,7 @@ export class ChatService extends Disposable implements IChatService {
 	 * Only persist local sessions from chat that are not imported.
 	 */
 	private shouldStoreSession(session: ChatModel): boolean {
-		if (session.isDeleted) {
+		if (session.isDeleted || session.isInternal) {
 			return false;
 		}
 		if (!LocalChatSessionUri.parseLocalSessionId(session.sessionResource)) {
@@ -543,7 +546,7 @@ export class ChatService extends Disposable implements IChatService {
 	}
 
 	private shouldBeInHistory(entry: ChatModel): boolean {
-		return !entry.isImported && !entry.isDeleted && !!LocalChatSessionUri.parseLocalSessionId(entry.sessionResource) && entry.initialLocation === ChatAgentLocation.Chat;
+		return !entry.isImported && !entry.isDeleted && !entry.isInternal && !!LocalChatSessionUri.parseLocalSessionId(entry.sessionResource) && entry.initialLocation === ChatAgentLocation.Chat;
 	}
 
 	async removeHistoryEntry(sessionResource: URI): Promise<void> {
@@ -568,13 +571,14 @@ export class ChatService extends Disposable implements IChatService {
 			sessionResource,
 			canUseTools: options?.canUseTools ?? true,
 			disableBackgroundKeepAlive: options?.disableBackgroundKeepAlive,
-			sessionTypeSelectionReason: options?.sessionTypeSelectionReason
+			sessionTypeSelectionReason: options?.sessionTypeSelectionReason,
+			internal: options?.internal
 		}, options?.debugOwner ?? 'ChatService#startNewLocalSession');
 	}
 
 	private _startSession(props: IStartSessionProps): ChatModel {
-		const { initialData, location, sessionResource, canUseTools, transferEditingSession, disableBackgroundKeepAlive, inputState, isReadOnly, isInputBlocked, sessionTypeSelectionReason } = props;
-		const model = this.instantiationService.createInstance(ChatModel, initialData, { initialLocation: location, canUseTools, resource: sessionResource, disableBackgroundKeepAlive, inputState, isReadOnly, isInputBlocked, sessionTypeSelectionReason });
+		const { initialData, location, sessionResource, canUseTools, transferEditingSession, disableBackgroundKeepAlive, inputState, isReadOnly, isInputBlocked, sessionTypeSelectionReason, internal } = props;
+		const model = this.instantiationService.createInstance(ChatModel, initialData, { initialLocation: location, canUseTools, resource: sessionResource, disableBackgroundKeepAlive, inputState, isReadOnly, isInputBlocked, sessionTypeSelectionReason, internal });
 		if (this._hasAgentHostContribution(sessionResource)) {
 			this._serverManagedQueueModels.add(model);
 		}
@@ -2637,6 +2641,10 @@ export class ChatService extends Disposable implements IChatService {
 		}
 
 		model?.acceptResponseProgress(request, progress);
+
+		if (progress.kind === 'questionCarousel' && !progress.isUsed) {
+			this._onDidReceiveQuestionCarousel.fire({ requestId: request.id, sessionResource: request.session.sessionResource, carousel: progress });
+		}
 	}
 
 	private toLocalSessionId(sessionResource: URI) {
