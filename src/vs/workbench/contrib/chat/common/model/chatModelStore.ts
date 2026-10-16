@@ -30,6 +30,8 @@ export interface IStartSessionProps {
 	readonly backgroundShellCount?: IObservable<number | undefined>;
 	readonly canvasContext?: IObservable<ICanvasContext | undefined>;
 	readonly sessionTypeSelectionReason?: SessionTypeSelectionReason;
+	/** Excludes this session from `getLiveSessionItems()`/history persistence — see `ChatModel#isInternal`. */
+	readonly internal?: boolean;
 }
 
 export interface ChatModelStoreDelegate {
