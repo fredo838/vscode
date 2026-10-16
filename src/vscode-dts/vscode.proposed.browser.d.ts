@@ -20,12 +20,37 @@ declare module 'vscode' {
 		/** The page icon (favicon or a default globe icon). */
 		readonly icon: IconPath;
 
+		/**
+		 * Whether the user has shared this page with agents — the same consent state as the tab's
+		 * own "Share with Agent" toolbar toggle. Changes fire {@link window.onDidChangeBrowserTabState}.
+		 */
+		readonly sharingState: BrowserTabSharingState;
+
+		/**
+		 * Asks the user to share this page with agents, through the same "Share with Agent?" flow as
+		 * the tab's toolbar toggle — including its network-policy checks. When this tab can't be
+		 * shared directly, the user may be offered a shareable copy in a new tab instead.
+		 *
+		 * @returns The tab that is now shared (this one, or the new copy), or `undefined` if the user
+		 * declined or sharing isn't possible.
+		 */
+		requestShare(): Thenable<BrowserTab | undefined>;
+
 		/** Create a new CDP session that exposes this browser tab. */
 		startCDPSession(): Thenable<BrowserCDPSession>;
 
 		/** Close this browser tab. */
 		close(): Thenable<void>;
 	}
+
+	/**
+	 * Whether a {@link BrowserTab} is shared with agents.
+	 * - `shared`: the user shared the page.
+	 * - `available`: the page can be shared but isn't.
+	 * - `blockedByNetworkPolicy`: the page's URL is blocked by the configured agent network policy.
+	 * - `unavailable`: agent sharing is not possible (e.g. chat is disabled).
+	 */
+	export type BrowserTabSharingState = 'shared' | 'available' | 'blockedByNetworkPolicy' | 'unavailable';
 
 	/**
 	 * A CDP (Chrome DevTools Protocol) session that provides a bidirectional message channel.

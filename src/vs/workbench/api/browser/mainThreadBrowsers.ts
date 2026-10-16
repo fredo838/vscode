@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Disposable, DisposableMap, DisposableStore, IDisposable, toDisposable } from '../../../base/common/lifecycle.js';
+import { Disposable, DisposableMap, DisposableStore, IDisposable, MutableDisposable, toDisposable } from '../../../base/common/lifecycle.js';
 import { IEditorService } from '../../services/editor/common/editorService.js';
 import { IExtHostContext, extHostNamedCustomer } from '../../services/extensions/common/extHostCustomers.js';
 import { BrowserTabDto, ExtHostBrowsersShape, ExtHostContext, MainContext, MainThreadBrowsersShape } from '../common/extHost.protocol.js';
-import { IBrowserViewCDPService, IBrowserViewWorkbenchService } from '../../contrib/browserView/common/browserView.js';
+import { BrowserViewSharingState, IBrowserViewCDPService, IBrowserViewModel, IBrowserViewWorkbenchService } from '../../contrib/browserView/common/browserView.js';
 import { BrowserViewUri } from '../../../platform/browserView/common/browserViewUri.js';
 import { generateUuid } from '../../../base/common/uuid.js';
 import { EditorGroupColumn, columnToEditorGroup } from '../../services/editor/common/editorGroupColumn.js';
@@ -96,8 +96,25 @@ export class MainThreadBrowsers extends Disposable implements MainThreadBrowsers
 		}
 		const disposables = new DisposableStore();
 
-		// Track property changes. Currently all the tracked properties are covered under the `onDidChangeLabel` event.
+		// Track property changes. Url, title and icon are covered by the `onDidChangeLabel` event;
+		// the sharing state comes from the tab's model, which can be (re)resolved over its lifetime.
 		disposables.add(input.onDidChangeLabel(() => {
+			this._proxy.$onDidChangeBrowserTabState(this._toDto(input));
+		}));
+		const sharingListener = disposables.add(new MutableDisposable());
+		const watchSharing = (model: IBrowserViewModel) => {
+			sharingListener.value = model.onDidChangeSharingState(() => {
+				this._proxy.$onDidChangeBrowserTabState(this._toDto(input));
+			});
+		};
+		if (input.model) {
+			watchSharing(input.model);
+		}
+		disposables.add(input.onDidResolveModel(model => {
+			watchSharing(model);
+			this._proxy.$onDidChangeBrowserTabState(this._toDto(input));
+		}));
+		disposables.add(this.browserViewService.onDidChangeSharingAvailable(() => {
 			this._proxy.$onDidChangeBrowserTabState(this._toDto(input));
 		}));
 		disposables.add(input.onWillDispose(() => {
@@ -117,7 +134,16 @@ export class MainThreadBrowsers extends Disposable implements MainThreadBrowsers
 			url: input.url || 'about:blank',
 			title: input.getTitle(),
 			favicon: input.favicon,
+			sharingState: this._sharingState(input),
 		};
+	}
+
+	/** An unresolved tab has no model yet, so it can't have been shared — only whether sharing is possible at all is known. */
+	private _sharingState(input: BrowserEditorInput): BrowserTabDto['sharingState'] {
+		if (input.model) {
+			return input.model.sharingState;
+		}
+		return this.browserViewService.isSharingAvailable ? BrowserViewSharingState.Available : BrowserViewSharingState.Unavailable;
 	}
 
 	// #endregion
@@ -172,6 +198,26 @@ export class MainThreadBrowsers extends Disposable implements MainThreadBrowsers
 		if (session) {
 			await this.cdpService.sendCDPMessage(session.groupId, message);
 		}
+	}
+
+	async $requestShare(browserId: string): Promise<BrowserTabDto | undefined> {
+		const known = this._knownBrowsers.get(browserId);
+		if (!known) {
+			throw new Error(`Unknown browser id: ${browserId}`);
+		}
+		// The same flow as the tab's "Share with Agent" toggle: VS Code's own confirmation dialog,
+		// network-policy checks, and possibly a shareable copy in a new tab. Never skips confirmation.
+		const model = await known.input.resolve();
+		const shared = await model.setSharedWithAgent(true);
+		if (!shared || shared.sharingState !== BrowserViewSharingState.Shared) {
+			return undefined;
+		}
+		const sharedInput = this._knownBrowsers.get(shared.id)?.input ?? this.browserViewService.getKnownBrowserViews().get(shared.id);
+		if (!sharedInput) {
+			return undefined;
+		}
+		this._track(sharedInput);
+		return this._toDto(sharedInput);
 	}
 
 	async $closeBrowserTab(browserId: string): Promise<void> {
