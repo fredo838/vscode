@@ -30,6 +30,7 @@ suite('ExtHostTerminalService', () => {
 
 		const commands = new class extends mock<ExtHostCommands>() {
 			override registerArgumentProcessor(_processor: ArgumentProcessor): void { }
+			override registerArgumentSerializer(_serializer: (value: unknown) => unknown): void { }
 		};
 		const initData = new class extends mock<IExtHostInitDataService>() {
 			override readonly remote = { authority: 'test+remote', isRemote: true, connectionData: null };
@@ -91,6 +92,7 @@ suite('ExtHostTerminalService', () => {
 
 		const commands = new class extends mock<ExtHostCommands>() {
 			override registerArgumentProcessor(_processor: ArgumentProcessor): void { }
+			override registerArgumentSerializer(_serializer: (value: unknown) => unknown): void { }
 		};
 		const initData = new class extends mock<IExtHostInitDataService>() {
 			override readonly remote = { authority: 'test+remote', isRemote: true, connectionData: null };

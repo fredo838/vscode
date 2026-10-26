@@ -15994,6 +15994,10 @@ export class AgentService extends Disposable implements IAgentService {
 		return this._networkDiagnostics.fetch(url);
 	}
 
+	evaluateShellCommand(command: string, shellLanguage: 'bash' | 'powershell', chat: string): Promise<'approved' | 'denied' | 'noMatch' | 'disabled'> {
+		return this._sideEffects.evaluateShellCommand(command, shellLanguage, chat);
+	}
+
 	async getSessionStateFile(session: URI, chat?: URI): Promise<URI | undefined> {
 		return this._providerService.getProviderForChat(session, chat)?.getSessionStateFile?.(session, chat);
 	}

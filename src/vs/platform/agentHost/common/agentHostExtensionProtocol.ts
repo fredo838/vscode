@@ -70,6 +70,30 @@ export const CollectAgentHostDebugLogsExtensionMethod = 'vscode/collectAgentHost
 export const CancelAgentHostDebugLogsExtensionMethod = 'vscode/cancelAgentHostDebugLogs';
 export const GetAgentHostSessionStateFileExtensionMethod = 'vscode/getAgentHostSessionStateFile';
 export const CreateAgentHostDetachedWorktreeExtensionMethod = 'vscode/createAgentHostDetachedWorktree';
+
+/**
+ * Checks a shell command against the host's terminal auto-approve rules, exactly as a built-in
+ * shell tool's command is checked before it runs (rules, then the files it redirects into must be
+ * writable without asking), for a client that runs commands itself and needs the same judgement.
+ * Params {@link IEvaluateShellCommandParams}; result {@link IEvaluateShellCommandResult}.
+ */
+export const EvaluateShellCommandExtensionMethod = 'vscode/evaluateShellCommand';
+
+export interface IEvaluateShellCommandParams {
+	/** The chat channel URI the command is run for: its working directories bound the writes. */
+	readonly chat: string;
+	readonly command: string;
+	readonly shellLanguage: 'bash' | 'powershell';
+}
+
+export interface IEvaluateShellCommandResult {
+	/**
+	 * `approved`: an allow rule matches and nothing it writes needs asking; `denied`: a deny rule
+	 * matches; `noMatch`: no rule decides, so the command needs the user's approval; `disabled`:
+	 * terminal auto-approve is turned off, so every command does.
+	 */
+	readonly decision: 'approved' | 'denied' | 'noMatch' | 'disabled';
+}
 export const ClaimAgentHostDetachedWorktreeExtensionMethod = 'vscode/claimAgentHostDetachedWorktree';
 export const DeleteAgentHostDetachedWorktreeExtensionMethod = 'vscode/deleteAgentHostDetachedWorktree';
 export const ReconcileAgentHostDetachedWorktreesExtensionMethod = 'vscode/reconcileAgentHostDetachedWorktrees';

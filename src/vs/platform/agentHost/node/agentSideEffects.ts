@@ -1670,7 +1670,12 @@ export class AgentSideEffects extends Disposable {
 			return;
 		}
 		this._logService.info(`[AgentSideEffects] Forwarding client tool completion: source=${source}, session=${sessionChannel}, chat=${chatChannel}, completionChat=${completionChat}, toolCallId=${toolCallId}, success=${result.success}`);
-		agent.onClientToolCallComplete(URI.parse(completionChat), toolCallId, result, this._chatContext(sessionChannel, chatChannel));
+		agent.onClientToolCallComplete(URI.parse(completionChat), toolCallId, result, this._chatContext(sessionChannel, chatChannel), source === 'client-dispatch');
+	}
+
+	/** See {@link SessionPermissionManager.evaluateShellCommand}. */
+	evaluateShellCommand(command: string, shellLanguage: 'bash' | 'powershell', chat: ProtocolURI): Promise<'approved' | 'denied' | 'noMatch' | 'disabled'> {
+		return this._permissionManager.evaluateShellCommand(command, shellLanguage, chat);
 	}
 
 	// ---- Side-effect handlers --------------------------------------------------

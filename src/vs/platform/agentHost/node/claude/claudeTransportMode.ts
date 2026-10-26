@@ -92,6 +92,13 @@ export function isClaudeAccountSetUp(account: AccountInfo | undefined): boolean 
 	}
 	// `tokenSource` spells "no credential" as `'none'` rather than absence;
 	// `apiKeySource` has only ever been observed absent in that case.
-	return (account.tokenSource !== undefined && account.tokenSource !== 'none')
-		|| account.apiKeySource !== undefined;
+	if ((account.tokenSource !== undefined && account.tokenSource !== 'none') || account.apiKeySource !== undefined) {
+		return true;
+	}
+	// A `claude login` (claude.ai OAuth, keychain) credential reports neither
+	// `tokenSource` nor `apiKeySource` (SDK 0.3.281), only the account it belongs
+	// to: `email` / `subscriptionType`. Signed out, those are absent and
+	// `tokenSource` is the `'none'` sentinel instead.
+	return account.tokenSource === undefined
+		&& (account.email !== undefined || account.subscriptionType !== undefined);
 }

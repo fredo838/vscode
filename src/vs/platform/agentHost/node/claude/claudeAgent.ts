@@ -2596,10 +2596,10 @@ export class ClaudeAgent extends Disposable implements IAgent {
 	 * from the routing target), the spawn edge on the addressed chat's
 	 * host-supplied origin names the conversation that owns the pending call.
 	 */
-	onClientToolCallComplete(chat: URI, toolCallId: string, result: ToolCallResult, context?: IAgentChatContext): void {
+	onClientToolCallComplete(chat: URI, toolCallId: string, result: ToolCallResult, context?: IAgentChatContext, fromClient?: boolean): void {
 		const addressed = this._findChatByUri(chat);
 		if (addressed) {
-			addressed.completeClientToolCall(toolCallId, result);
+			addressed.completeClientToolCall(toolCallId, result, fromClient);
 			return;
 		}
 		const spawnedFrom = resolveSubagentChatParent(context);
@@ -2608,7 +2608,7 @@ export class ClaudeAgent extends Disposable implements IAgent {
 		}
 		// `AgentSideEffects` forwards every `ChatToolCallComplete` envelope
 		// (including SDK-owned tools); silent on miss is the expected path.
-		this._findChatByUri(spawnedFrom.chat)?.completeClientToolCall(toolCallId, result);
+		this._findChatByUri(spawnedFrom.chat)?.completeClientToolCall(toolCallId, result, fromClient);
 	}
 
 	/**

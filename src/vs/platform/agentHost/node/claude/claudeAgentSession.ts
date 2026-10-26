@@ -1397,8 +1397,17 @@ export class ClaudeAgentSession extends Disposable implements IRematerializer {
 	 * `ChatToolCallComplete` envelope, so SDK-owned tool completions land
 	 * here too and must NOT throw.
 	 */
-	completeClientToolCall(toolCallId: string, result: ToolCallResult): boolean {
+	completeClientToolCall(toolCallId: string, result: ToolCallResult, keepUntilAwaited = false): boolean {
 		const converted = convertToolCallResult(result, toolCallId);
+		// A client can finish a call before the SDK's MCP handler for it has parked (it parks only
+		// after Claude's own permission check, and parallel calls park one after another), and a
+		// result answered to nobody is lost: the turn then waits for it forever. Keep a client's
+		// result for the handler; the host's echo of it, and completions of SDK-owned tools,
+		// still only answer a handler already waiting.
+		if (keepUntilAwaited) {
+			this._pendingClientToolCalls.respondOrBuffer(toolCallId, converted);
+			return true;
+		}
 		return this._pendingClientToolCalls.respond(toolCallId, converted);
 	}
 

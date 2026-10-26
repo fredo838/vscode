@@ -49,6 +49,11 @@ suite('claudeTransportMode', () => {
 			// `claude login` / `CLAUDE_CODE_OAUTH_TOKEN` — the keychain case no
 			// filesystem check could ever see.
 			['oauth token', { tokenSource: 'ANTHROPIC_AUTH_TOKEN', apiProvider: 'firstParty' }, true],
+			// `claude login` with a claude.ai subscription, measured with SDK
+			// 0.3.281: no credential fields at all, only the account.
+			['claude.ai login (keychain)', { email: 'user@example.com', organization: 'Org', subscriptionType: 'Claude Pro', apiProvider: 'firstParty' }, true],
+			// The account fields never override an explicit "no credential".
+			['account fields with tokenSource none', { tokenSource: 'none', email: 'user@example.com', apiProvider: 'firstParty' }, false],
 			// An API key reports through `apiKeySource` and leaves `tokenSource`
 			// at its `'none'` sentinel, so testing `tokenSource` alone misses it.
 			['api key', { tokenSource: 'none', apiKeySource: 'ANTHROPIC_API_KEY', apiProvider: 'firstParty' }, true],
