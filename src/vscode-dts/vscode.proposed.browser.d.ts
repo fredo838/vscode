@@ -39,6 +39,12 @@ declare module 'vscode' {
 		/** Create a new CDP session that exposes this browser tab. */
 		startCDPSession(): Thenable<BrowserCDPSession>;
 
+		/**
+		 * Bring this browser tab to the front of the editor group that holds it.
+		 * @param preserveFocus When `true`, the tab will not take focus.
+		 */
+		show(preserveFocus?: boolean): Thenable<void>;
+
 		/** Close this browser tab. */
 		close(): Thenable<void>;
 	}

@@ -180,6 +180,7 @@ export interface ITerminalConfiguration {
 		osx: { [key: string]: string };
 		windows: { [key: string]: string };
 	};
+	environmentChangesIndicator: 'on' | 'off';
 	environmentChangesRelaunch: boolean;
 	showExitAlert: boolean;
 	splitCwd: 'workspaceRoot' | 'initial' | 'inherited';

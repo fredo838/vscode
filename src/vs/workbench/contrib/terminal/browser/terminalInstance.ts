@@ -2407,7 +2407,12 @@ export class TerminalInstance extends Disposable implements ITerminalInstance {
 			this.relaunch();
 			return;
 		}
-		// Re-create statuses
+		// Re-create statuses, unless the user turned the indicator off
+		if (this._terminalConfigurationService.config.environmentChangesIndicator === 'off') {
+			this.statusList.remove(TerminalStatus.RelaunchNeeded);
+			this.statusList.remove(TerminalStatus.EnvironmentVariableInfoChangesActive);
+			return;
+		}
 		const workspaceFolder = getWorkspaceForTerminal(this.shellLaunchConfig.cwd, this._workspaceContextService, this._historyService);
 		this.statusList.add(info.getStatus({ workspaceFolder }));
 	}

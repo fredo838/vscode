@@ -1470,6 +1470,7 @@ export interface BrowserTabDto {
 export interface MainThreadBrowsersShape extends IDisposable {
 	$openBrowserTab(url: string, viewColumn?: EditorGroupColumn, options?: IEditorOptions): Promise<BrowserTabDto>;
 	$closeBrowserTab(browserId: string): Promise<void>;
+	$showBrowserTab(browserId: string, preserveFocus?: boolean): Promise<void>;
 	/** Runs the tab's "Share with Agent" flow; resolves to the tab that is now shared, if any. */
 	$requestShare(browserId: string): Promise<BrowserTabDto | undefined>;
 	$startCDPSession(sessionId: string, browserId: string): Promise<void>;

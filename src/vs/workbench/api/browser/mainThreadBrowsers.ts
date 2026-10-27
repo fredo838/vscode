@@ -220,6 +220,15 @@ export class MainThreadBrowsers extends Disposable implements MainThreadBrowsers
 		return this._toDto(sharedInput);
 	}
 
+	async $showBrowserTab(browserId: string, preserveFocus?: boolean): Promise<void> {
+		const known = this._knownBrowsers.get(browserId);
+		if (!known) {
+			throw new Error(`Unknown browser id: ${browserId}`);
+		}
+		const group = this.editorGroupsService.groups.find(g => g.contains(known.input)) ?? this.editorGroupsService.activeGroup;
+		await group.openEditor(known.input, { preserveFocus });
+	}
+
 	async $closeBrowserTab(browserId: string): Promise<void> {
 		const known = this._knownBrowsers.get(browserId);
 		if (!known) {

@@ -95,6 +95,7 @@ export const enum TerminalSettingId {
 	EnvMacOs = 'terminal.integrated.env.osx',
 	EnvLinux = 'terminal.integrated.env.linux',
 	EnvWindows = 'terminal.integrated.env.windows',
+	EnvironmentChangesIndicator = 'terminal.integrated.environmentChangesIndicator',
 	EnvironmentChangesRelaunch = 'terminal.integrated.environmentChangesRelaunch',
 	ShowExitAlert = 'terminal.integrated.showExitAlert',
 	SplitCwd = 'terminal.integrated.splitCwd',

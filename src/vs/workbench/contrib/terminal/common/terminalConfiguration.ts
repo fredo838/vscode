@@ -482,6 +482,16 @@ export const terminalConfiguration: IStringDictionary<IConfigurationPropertySche
 		},
 		default: {}
 	},
+	[TerminalSettingId.EnvironmentChangesIndicator]: {
+		markdownDescription: localize('terminal.integrated.environmentChangesIndicator', "Whether to show on each terminal that extensions have changed, or want to change, its environment (the \"relaunch the terminal\" warning)."),
+		type: 'string',
+		enum: ['on', 'off'],
+		enumDescriptions: [
+			localize('terminal.integrated.environmentChangesIndicator.on', "Show the indicator."),
+			localize('terminal.integrated.environmentChangesIndicator.off', "Never show the indicator. A terminal whose environment is stale keeps it until it is relaunched."),
+		],
+		default: 'on'
+	},
 	[TerminalSettingId.EnvironmentChangesRelaunch]: {
 		markdownDescription: localize('terminal.integrated.environmentChangesRelaunch', "Whether to relaunch terminals automatically if extensions want to contribute to their environment and have not been interacted with yet."),
 		type: 'boolean',

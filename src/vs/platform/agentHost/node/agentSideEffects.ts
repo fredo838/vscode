@@ -1720,6 +1720,12 @@ export class AgentSideEffects extends Disposable {
 			this._toolCallAgents.delete(toolCallKey);
 			this._managedApprovalToolCalls.delete(toolCallKey);
 			this._logService.trace(`[AgentSideEffects] Dropping stale tool ready for ${e.state.toolCallId}: status=${toolCall.status}`);
+			// The agent still waits for an answer to its permission request, or never goes on: a
+			// client tool approved earlier (allowed for the session) can run and complete before the
+			// agent's own permission check (Claude's `canUseTool`) reaches us. Approve one that
+			// completed, so the agent picks up its result (kept for it, see `completeClientToolCall`);
+			// refuse one that didn't. An agent that wasn't asking ignores the answer.
+			agent.respondToPermissionRequest(e.state.toolCallId, toolCall.status === ToolCallStatus.Completed, { decisionSource: 'host_policy' });
 			return;
 		}
 		const contributor = e.state.contributor ?? toolCall?.contributor;

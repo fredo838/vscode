@@ -52,6 +52,9 @@ class ExtHostBrowserTab {
 			startCDPSession(): Promise<vscode.BrowserCDPSession> {
 				return that._startCDPSession();
 			},
+			show(preserveFocus?: boolean): Promise<void> {
+				return that._proxy.$showBrowserTab(that.id, preserveFocus);
+			},
 			close(): Promise<void> {
 				return that._close();
 			}
