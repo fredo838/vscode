@@ -1941,8 +1941,13 @@ export interface IAgent {
 	/** Remove one client's contributions from an exact chat. */
 	removeActiveClient(chat: URI, context: URI | IAgentChatContext, clientId: string): void;
 
-	/** Complete a client tool call on its host-resolved provider chat. */
-	onClientToolCallComplete(chat: URI, toolCallId: string, result: ToolCallResult, context?: IAgentChatContext): void;
+	/**
+	 * Complete a client tool call on its host-resolved provider chat. `fromClient` is set when a
+	 * client dispatched the completion (not the host's echo of it, nor the completion of a tool the
+	 * provider runs itself): such a result is for one of the provider's client-tool calls and may
+	 * arrive before the provider waits for it, so the provider should keep it until it does.
+	 */
+	onClientToolCallComplete(chat: URI, toolCallId: string, result: ToolCallResult, context?: IAgentChatContext, fromClient?: boolean): void;
 
 	/** Respond to a pending permission request from the SDK. */
 	respondToPermissionRequest(requestId: string, approved: boolean, context?: IAgentPermissionResponseContext): void;

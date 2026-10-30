@@ -272,7 +272,8 @@ export class OpenBrowserTool implements IToolImpl {
 			return undefined;
 		}
 
-		return this._shareExistingPage(getSessionId(invocation), editor);
+		const skipConfirmation = invocation.preToolUseResult?.permissionDecision === 'allow';
+		return this._shareExistingPage(getSessionId(invocation), editor, skipConfirmation);
 	}
 
 	private _buildShareCarousel(editors: BrowserEditorInput[], url: string | undefined, resolveId: string): ChatQuestionCarouselData {
@@ -347,11 +348,11 @@ export class OpenBrowserTool implements IToolImpl {
 		return notice ? { ...result, content: [notice, ...result.content] } : result;
 	}
 
-	private async _shareExistingPage(sessionId: string, editor: BrowserEditorInput): Promise<IToolResult> {
+	private async _shareExistingPage(sessionId: string, editor: BrowserEditorInput, skipConfirmation?: boolean): Promise<IToolResult> {
 		const model = await editor.resolve();
 		let sharedModel = model;
 		if (model.sharingState !== BrowserViewSharingState.Shared) {
-			const result = await model.setSharedWithAgent(true);
+			const result = await model.setSharedWithAgent(true, { skipConfirmation });
 			if (!result) {
 				return { content: [{ kind: 'text', value: 'The user declined to share the page.' }] };
 			}

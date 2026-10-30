@@ -472,6 +472,17 @@ export abstract class BaseExtHostTerminalService extends Disposable implements I
 		this._proxy = extHostRpc.getProxy(MainContext.MainThreadTerminalService);
 		this._bufferer = new TerminalDataBufferer(this._proxy.$sendProcessData);
 		this._proxy.$registerProcessSupport(supportsProcesses);
+		// A `vscode.Terminal` passed to a workbench command (`renameWithArg`, `moveAfterWithArg`)
+		// becomes a reference to its terminal instance, once the terminal has opened.
+		this._extHostCommands.registerArgumentSerializer(value => {
+			if (!value || typeof value !== 'object') {
+				return undefined;
+			}
+			const terminal = this._terminals.find(t => t.value === value);
+			return terminal && typeof terminal._id === 'number'
+				? { $mid: MarshalledId.TerminalContext, instanceId: terminal._id } satisfies ISerializedTerminalInstanceContext
+				: undefined;
+		});
 		this._extHostCommands.registerArgumentProcessor({
 			processArgument: arg => {
 				const deserialize = (arg: ISerializedTerminalInstanceContext) => {

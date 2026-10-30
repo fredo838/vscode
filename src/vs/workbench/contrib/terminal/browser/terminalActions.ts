@@ -52,7 +52,8 @@ import { IWorkbenchEnvironmentService } from '../../../services/environment/comm
 import { IPreferencesService } from '../../../services/preferences/common/preferences.js';
 import { IRemoteAgentService } from '../../../services/remote/common/remoteAgentService.js';
 import { accessibleViewCurrentProviderId, accessibleViewIsShown, accessibleViewOnLastLine } from '../../accessibility/browser/accessibilityConfiguration.js';
-import { IRemoteTerminalAttachTarget, ITerminalProfileResolverService, ITerminalProfileService, TERMINAL_VIEW_ID, TerminalCommandId } from '../common/terminal.js';
+import { IRemoteTerminalAttachTarget, ISerializedTerminalInstanceContext, ITerminalProfileResolverService, ITerminalProfileService, TERMINAL_VIEW_ID, TerminalCommandId } from '../common/terminal.js';
+import { MarshalledId } from '../../../../base/common/marshallingIds.js';
 import { TerminalContextKeys } from '../common/terminalContextKey.js';
 import { terminalStrings } from '../common/terminalStrings.js';
 import { Direction, ICreateTerminalOptions, IDetachedTerminalInstance, ITerminalConfigurationService, ITerminalEditorService, ITerminalEditingService, ITerminalGroupService, ITerminalInstance, ITerminalInstanceService, ITerminalService, IXtermTerminal } from './terminal.js';
@@ -1043,7 +1044,27 @@ export function registerTerminalActions() {
 				notificationService.warn(localize('workbench.action.terminal.renameWithArg.noName', "No name argument provided"));
 				return;
 			}
-			activeInstance.rename(name);
+			// An extension may name the terminal to rename (`terminal: vscode.Terminal`); otherwise the active one.
+			// A named terminal that is gone (closed meanwhile) renames nothing, never the active one.
+			const named = (<{ terminal?: unknown }>args).terminal;
+			const target = named === undefined ? activeInstance : getContextInstance(c, named);
+			target?.rename(name);
+		}
+	});
+
+	registerTerminalAction({
+		id: TerminalCommandId.MoveAfterWithArgs,
+		title: localize2('workbench.action.terminal.moveAfterWithArg', 'Move Terminal After Another'),
+		f1: false,
+		precondition: sharedWhenClause.terminalAvailable,
+		run: (c, _accessor, args) => {
+			// `{ terminal, after }`, both `vscode.Terminal`s from an extension: puts `terminal`'s tab
+			// directly after `after`'s in the terminal list, without changing the active terminal.
+			const source = getContextInstance(c, (<{ terminal?: unknown }>args)?.terminal);
+			const target = getContextInstance(c, (<{ after?: unknown }>args)?.after);
+			if (source && target && source.target !== TerminalLocation.Editor && target.target !== TerminalLocation.Editor) {
+				c.groupService.moveGroupAfter(source, target);
+			}
 		}
 	});
 
@@ -1643,6 +1664,14 @@ export function refreshTerminalActions(detectedProfiles: ITerminalProfile[]): ID
 		}
 	});
 	return newWithProfileAction;
+}
+
+/** The terminal an extension passed as a command argument (see `registerArgumentSerializer` in extHostCommands). */
+function getContextInstance(c: ITerminalServicesCollection, arg: unknown): ITerminalInstance | undefined {
+	const context = arg as Partial<ISerializedTerminalInstanceContext> | undefined;
+	return context?.$mid === MarshalledId.TerminalContext && typeof context.instanceId === 'number'
+		? c.service.getInstanceFromId(context.instanceId)
+		: undefined;
 }
 
 function getResourceOrActiveInstance(c: ITerminalServicesCollection, resource: unknown): ITerminalInstance | undefined {

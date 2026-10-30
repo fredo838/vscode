@@ -20,6 +20,7 @@ suite('ExtHostBrowsers', () => {
 		url: 'https://example.com',
 		title: 'Example',
 		favicon: undefined,
+		sharingState: 'available',
 	};
 
 	function createDto(overrides?: Partial<BrowserTabDto>): BrowserTabDto {
@@ -249,6 +250,63 @@ suite('ExtHostBrowsers', () => {
 
 		extHost.$onDidChangeBrowserTabState(createDto({ id: 'b1', favicon: undefined }));
 		assert.strictEqual((extHost.browserTabs[0].icon as { id: string }).id, 'globe');
+	});
+
+	// #endregion
+
+	// #region BrowserTab sharing
+
+	test('sharingState reflects the DTO and fires onDidChangeBrowserTabState when it changes', () => {
+		const extHost = createExtHostBrowsers();
+		extHost.$onDidOpenBrowserTab(createDto({ id: 'b1', sharingState: 'available' }));
+		const changes: vscode.BrowserTabSharingState[] = [];
+		store.add(extHost.onDidChangeBrowserTabState(tab => changes.push(tab.sharingState)));
+
+		extHost.$onDidChangeBrowserTabState(createDto({ id: 'b1', sharingState: 'shared' }));
+		extHost.$onDidChangeBrowserTabState(createDto({ id: 'b1', sharingState: 'shared' }));
+		extHost.$onDidChangeBrowserTabState(createDto({ id: 'b1', sharingState: 'blockedByNetworkPolicy' }));
+
+		assert.deepStrictEqual(changes, ['shared', 'blockedByNetworkPolicy']);
+		assert.strictEqual(extHost.browserTabs[0].sharingState, 'blockedByNetworkPolicy');
+	});
+
+	test('requestShare resolves to the tab the main thread shared', async () => {
+		const requested: string[] = [];
+		const extHost = createExtHostBrowsers({
+			$requestShare: (id: string) => {
+				requested.push(id);
+				return Promise.resolve(createDto({ id, sharingState: 'shared' }));
+			},
+		});
+		extHost.$onDidOpenBrowserTab(createDto({ id: 'b1' }));
+		const tab = extHost.browserTabs[0];
+
+		const shared = await tab.requestShare();
+
+		assert.deepStrictEqual(requested, ['b1']);
+		assert.strictEqual(shared, tab);
+		assert.strictEqual(tab.sharingState, 'shared');
+	});
+
+	test('requestShare returns a new tab when a shareable copy was opened', async () => {
+		const extHost = createExtHostBrowsers({
+			$requestShare: () => Promise.resolve(createDto({ id: 'copy', url: 'https://example.com', sharingState: 'shared' })),
+		});
+		extHost.$onDidOpenBrowserTab(createDto({ id: 'b1' }));
+
+		const shared = await extHost.browserTabs[0].requestShare();
+
+		assert.strictEqual(extHost.browserTabs.length, 2);
+		assert.strictEqual(shared, extHost.browserTabs[1]);
+		assert.strictEqual(shared?.sharingState, 'shared');
+	});
+
+	test('requestShare returns undefined when the user declines', async () => {
+		const extHost = createExtHostBrowsers({ $requestShare: () => Promise.resolve(undefined) });
+		extHost.$onDidOpenBrowserTab(createDto({ id: 'b1' }));
+
+		assert.strictEqual(await extHost.browserTabs[0].requestShare(), undefined);
+		assert.strictEqual(extHost.browserTabs[0].sharingState, 'available');
 	});
 
 	// #endregion

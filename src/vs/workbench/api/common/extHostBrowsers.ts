@@ -20,6 +20,7 @@ class ExtHostBrowserTab {
 	private _url: string;
 	private _title: string;
 	private _favicon: string | undefined;
+	private _sharingState: vscode.BrowserTabSharingState;
 
 	readonly value: vscode.BrowserTab;
 
@@ -27,11 +28,13 @@ class ExtHostBrowserTab {
 		readonly id: string,
 		private readonly _proxy: MainThreadBrowsersShape,
 		private readonly _sessions: DisposableMap<string, ExtHostBrowserCDPSession>,
+		private readonly _resolveTab: (dto: BrowserTabDto) => vscode.BrowserTab,
 		data: BrowserTabDto,
 	) {
 		this._url = data.url;
 		this._title = data.title;
 		this._favicon = data.favicon;
+		this._sharingState = data.sharingState;
 
 		const that = this;
 		this.value = {
@@ -42,8 +45,15 @@ class ExtHostBrowserTab {
 					? URI.parse(that._favicon)
 					: new extHostTypes.ThemeIcon(Codicon.globe.id) as vscode.ThemeIcon;
 			},
+			get sharingState(): vscode.BrowserTabSharingState { return that._sharingState; },
+			requestShare(): Promise<vscode.BrowserTab | undefined> {
+				return that._requestShare();
+			},
 			startCDPSession(): Promise<vscode.BrowserCDPSession> {
 				return that._startCDPSession();
+			},
+			show(preserveFocus?: boolean): Promise<void> {
+				return that._proxy.$showBrowserTab(that.id, preserveFocus);
 			},
 			close(): Promise<void> {
 				return that._close();
@@ -65,7 +75,16 @@ class ExtHostBrowserTab {
 			this._favicon = data.favicon;
 			changed = true;
 		}
+		if (data.sharingState !== this._sharingState) {
+			this._sharingState = data.sharingState;
+			changed = true;
+		}
 		return changed;
+	}
+
+	private async _requestShare(): Promise<vscode.BrowserTab | undefined> {
+		const shared = await this._proxy.$requestShare(this.id);
+		return shared ? this._resolveTab(shared) : undefined;
 	}
 
 	private async _startCDPSession(): Promise<vscode.BrowserCDPSession> {
@@ -209,7 +228,7 @@ export class ExtHostBrowsers extends Disposable implements ExtHostBrowsersShape 
 	private _getOrCreateTab(dto: BrowserTabDto): ExtHostBrowserTab {
 		let tab = this._browserTabs.get(dto.id);
 		if (!tab) {
-			tab = new ExtHostBrowserTab(dto.id, this._proxy, this._sessions, dto);
+			tab = new ExtHostBrowserTab(dto.id, this._proxy, this._sessions, d => this._getOrCreateTab(d).value, dto);
 			this._browserTabs.set(dto.id, tab);
 			this._onDidOpenBrowserTab.fire(tab.value);
 		} else {

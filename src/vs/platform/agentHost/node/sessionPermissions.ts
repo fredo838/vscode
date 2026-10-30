@@ -632,6 +632,19 @@ export class SessionPermissionManager extends Disposable {
 	 * rules that govern write tool calls: the destination must resolve to a
 	 * path inside the working directory and must not match a denied glob.
 	 */
+	/**
+	 * Judges a shell command a client runs itself the way {@link getAutoApproval} judges a built-in
+	 * shell tool's (`vscode/evaluateShellCommand`): the terminal auto-approve rules, then the files
+	 * it redirects into, within the chat's working directories.
+	 */
+	async evaluateShellCommand(command: string, shellLanguage: 'bash' | 'powershell', chat: ProtocolURI): Promise<CommandApprovalResult | 'disabled'> {
+		if (this._configService.getRootValue(platformRootSchema, AgentHostTerminalAutoApproveEnabledConfigKey) === false) {
+			return 'disabled';
+		}
+		const workingDirectories = getEffectiveWorkingDirectories(this._stateManager, chat)?.map(d => URI.parse(d));
+		return this._evaluateShellAutoApproval(command, shellLanguage, workingDirectories, chat);
+	}
+
 	private async _evaluateShellAutoApproval(toolInput: string, shellLanguage: NonNullable<IToolApprovalEvent['shellLanguage']>, workingDirectories: readonly URI[] | undefined, sessionKey: ProtocolURI): Promise<CommandApprovalResult> {
 		const writeDestinations: string[] = [];
 		const result = this._commandAutoApprover.shouldAutoApprove(toolInput, {

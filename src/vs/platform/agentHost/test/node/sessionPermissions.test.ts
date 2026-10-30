@@ -613,6 +613,22 @@ suite('SessionPermissionManager', () => {
 		assert.strictEqual(result, undefined);
 	});
 
+	test('evaluateShellCommand judges a client-run command like a built-in shell tool\'s', async () => {
+		configService.updateRootConfig({ [AgentHostTerminalAutoApproveRulesConfigKey]: { echo: true, rm: false } });
+		assert.deepStrictEqual(await Promise.all([
+			permissions.evaluateShellCommand('echo hello', 'bash', sessionUri),
+			permissions.evaluateShellCommand('rm -rf build', 'bash', sessionUri),
+			permissions.evaluateShellCommand('make deploy', 'bash', sessionUri),
+			permissions.evaluateShellCommand('echo hi > note.txt', 'bash', sessionUri),
+			permissions.evaluateShellCommand(`echo hi > ${join(outsideDir, 'note.txt')}`, 'bash', sessionUri),
+		]), ['approved', 'denied', 'noMatch', 'approved', 'noMatch']);
+	});
+
+	test('evaluateShellCommand reports when terminal auto-approve is off', async () => {
+		configService.updateRootConfig({ [AgentHostTerminalAutoApproveEnabledConfigKey]: false });
+		assert.strictEqual(await permissions.evaluateShellCommand('echo hello', 'bash', sessionUri), 'disabled');
+	});
+
 	test('respects forwarded terminal auto-approve allow rules in default permission mode', async () => {
 		configService.updateRootConfig({ [AgentHostTerminalAutoApproveRulesConfigKey]: { python: true } });
 

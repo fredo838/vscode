@@ -1183,6 +1183,9 @@ export interface IAgentService {
 	diagnosticsFetch(url: string): Promise<IAgentHostNetworkFetchResult>;
 
 	getSessionStateFile?(session: URI, chat?: URI): Promise<URI | undefined>;
+
+	/** Checks a shell command against the terminal auto-approve rules (`vscode/evaluateShellCommand`). */
+	evaluateShellCommand?(command: string, shellLanguage: 'bash' | 'powershell', chat: string): Promise<'approved' | 'denied' | 'noMatch' | 'disabled'>;
 	/** Resolve the owning provider's exact plan artifact without granting access to its directory. */
 	getSessionPlanFile?(session: URI, chat: URI): URI | undefined;
 

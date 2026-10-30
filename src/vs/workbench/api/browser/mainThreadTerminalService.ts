@@ -189,7 +189,9 @@ export class MainThreadTerminalService extends Disposable implements MainThreadT
 
 	private async _deserializeParentTerminal(location?: TerminalLocation | TerminalEditorLocationOptions | { parentTerminal: ExtHostTerminalIdentifier } | { splitActiveTerminal: boolean; location?: TerminalLocation }): Promise<TerminalLocation | TerminalEditorLocationOptions | { parentTerminal: ITerminalInstance } | { splitActiveTerminal: boolean } | undefined> {
 		if (typeof location === 'object' && hasKey(location, { parentTerminal: true })) {
-			const parentTerminal = await this._extHostTerminals.get(location.parentTerminal.toString());
+			// Once open, an extension terminal's id is numeric (`$acceptTerminalOpened` swaps it), and
+			// `_extHostTerminals` only holds the string ids terminals start with.
+			const parentTerminal = await this._getTerminalInstance(location.parentTerminal);
 			return parentTerminal ? { parentTerminal } : undefined;
 		}
 		return location;

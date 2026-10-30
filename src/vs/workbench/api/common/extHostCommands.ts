@@ -117,6 +117,17 @@ export class ExtHostCommands implements ExtHostCommandsShape {
 		this._argumentProcessors.push(processor);
 	}
 
+	private readonly _argumentSerializers: ((value: unknown) => unknown)[] = [];
+
+	/**
+	 * Converts extension API objects that only the extension host knows (a `vscode.Terminal`, for
+	 * example) into a reference the main thread understands, when they are passed as arguments to
+	 * a command that does not live in the extension host. Return `undefined` to leave a value as is.
+	 */
+	registerArgumentSerializer(serializer: (value: unknown) => unknown): void {
+		this._argumentSerializers.push(serializer);
+	}
+
 	registerApiCommand(apiCommand: ApiCommand): extHostTypes.Disposable {
 
 
@@ -186,9 +197,22 @@ export class ExtHostCommands implements ExtHostCommandsShape {
 			return this._executeContributedCommand<T>(id, args, false);
 
 		} else {
+			// API objects only the extension host knows (a `vscode.Terminal`) can sit inside a plain
+			// object argument, e.g. `{ name, terminal }`: the conversion below never looks inside one.
+			const serializers = this._argumentSerializers;
+			const serializedArgs = serializers.length ? cloneAndChange(args, function (value) {
+				for (const serialize of serializers) {
+					const serialized = serialize(value);
+					if (serialized !== undefined) {
+						return serialized;
+					}
+				}
+				return Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype ? undefined : value;
+			}) : args;
+
 			// automagically convert some argument types
 			let hasBuffers = false;
-			const toArgs = cloneAndChange(args, function (value) {
+			const toArgs = cloneAndChange(serializedArgs, function (value) {
 				if (value instanceof extHostTypes.Position) {
 					return extHostTypeConverter.Position.from(value);
 				} else if (value instanceof extHostTypes.Range) {

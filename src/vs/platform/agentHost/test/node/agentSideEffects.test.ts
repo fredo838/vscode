@@ -6033,6 +6033,43 @@ suite('AgentSideEffects', () => {
 			});
 		}
 
+		for (const completed of [true, false]) {
+			test(`answers the agent's permission check for a client tool that already ${completed ? 'completed' : 'was cancelled'}`, async () => {
+				// A client tool allowed for the session runs as soon as it starts and can finish before the
+				// agent's own permission check arrives; the agent must still get an answer, or it waits forever.
+				setupSession();
+				startTurn('turn-1');
+				disposables.add(sideEffects.registerProgressListener(agent));
+				const response = new DeferredPromise<boolean>();
+				agent.respondToPermissionRequest = (requestId, approved) => {
+					agent.respondToPermissionCalls.push({ requestId, approved });
+					void response.complete(approved);
+				};
+				stateManager.dispatchServerAction(defaultChatUri, {
+					type: ActionType.ChatToolCallStart, turnId: 'turn-1', toolCallId: 'fast-tool', toolName: 'bode_browser_act', displayName: 'bode_browser_act',
+					contributor: { kind: ToolCallContributorKind.Client, clientId: 'client-1' },
+				});
+				if (completed) {
+					stateManager.dispatchServerAction(defaultChatUri, {
+						type: ActionType.ChatToolCallReady, turnId: 'turn-1', toolCallId: 'fast-tool', invocationMessage: 'bode_browser_act', confirmed: ToolCallConfirmationReason.Setting,
+					});
+					stateManager.dispatchServerAction(defaultChatUri, { type: ActionType.ChatToolCallComplete, turnId: 'turn-1', toolCallId: 'fast-tool', result: { success: true, pastTenseMessage: 'Evaluated' } });
+				} else {
+					stateManager.dispatchServerAction(defaultChatUri, { type: ActionType.ChatToolCallReady, turnId: 'turn-1', toolCallId: 'fast-tool', invocationMessage: 'bode_browser_act', confirmationTitle: 'Allow?' });
+					stateManager.dispatchServerAction(defaultChatUri, { type: ActionType.ChatToolCallConfirmed, turnId: 'turn-1', toolCallId: 'fast-tool', approved: false, reason: ToolCallCancellationReason.Denied });
+				}
+				const status = stateManager.getChatState(defaultChatUri)?.activeTurn?.responseParts.find(p => p.kind === ResponsePartKind.ToolCall && p.toolCall.toolCallId === 'fast-tool');
+				assert.strictEqual(status?.kind === ResponsePartKind.ToolCall && status.toolCall.status, completed ? ToolCallStatus.Completed : ToolCallStatus.Cancelled);
+				agent.fireProgress({
+					kind: 'pending_confirmation', chat: URI.parse(defaultChatUri),
+					state: { status: ToolCallStatus.PendingConfirmation, toolCallId: 'fast-tool', toolName: 'bode_browser_act', displayName: 'bode_browser_act', invocationMessage: 'Run MCP tool client__bode_browser_act', confirmationTitle: 'Allow?' },
+					permissionKind: 'mcp', permissionPath: undefined,
+				});
+				await response.p;
+				assert.deepStrictEqual(agent.respondToPermissionCalls, [{ requestId: 'fast-tool', approved: completed }]);
+			});
+		}
+
 		for (const kind of ['manual', 'managed', 'client-auto'] as const) {
 			test(`rejects ${kind} approval without an active turn instead of leaving the provider waiting`, async () => {
 				setupSession();

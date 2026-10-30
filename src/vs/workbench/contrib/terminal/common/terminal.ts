@@ -180,6 +180,7 @@ export interface ITerminalConfiguration {
 		osx: { [key: string]: string };
 		windows: { [key: string]: string };
 	};
+	environmentChangesIndicator: 'on' | 'off';
 	environmentChangesRelaunch: boolean;
 	showExitAlert: boolean;
 	splitCwd: 'workspaceRoot' | 'initial' | 'inherited';
@@ -483,6 +484,7 @@ export const enum TerminalCommandId {
 	Rename = 'workbench.action.terminal.rename',
 	RenameActiveTab = 'workbench.action.terminal.renameActiveTab',
 	RenameWithArgs = 'workbench.action.terminal.renameWithArg',
+	MoveAfterWithArgs = 'workbench.action.terminal.moveAfterWithArg',
 	ScrollToPreviousCommand = 'workbench.action.terminal.scrollToPreviousCommand',
 	ScrollToNextCommand = 'workbench.action.terminal.scrollToNextCommand',
 	SelectToPreviousCommand = 'workbench.action.terminal.selectToPreviousCommand',
